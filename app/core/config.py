@@ -25,8 +25,15 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
     # ── IA ────────────────────────────────────────────────────────────────────
-    GROQ_API_KEY: str
-    GROQ_MODEL: str = "llama-3.1-8b-instant"
+    # OpenRouter (preferido) o Groq como fallback
+    OPENROUTER_API_KEY: str = ""
+    GROQ_API_KEY: str = ""
+    # Modelo a usar — para OpenRouter: "openai/gpt-4o", "anthropic/claude-3.5-sonnet", etc.
+    # Para Groq: "llama-3.3-70b-versatile"
+    AI_MODEL: str = "openai/gpt-4o"
+    # URL de tu sitio (requerido por OpenRouter para rankings)
+    SITE_URL: str = "https://utnia.netlify.app"
+    SITE_NAME: str = "Asistente UTN"
 
     # ── Rate limiting ─────────────────────────────────────────────────────────
     RATE_LIMIT_CHAT: str = "20/minute"

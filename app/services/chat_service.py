@@ -1,7 +1,7 @@
 """
 Servicio de chat con IA.
 Construye el contexto desde la DB según el rol del usuario
-y consulta a Groq para generar la respuesta.
+y consulta a OpenRouter (o Groq como fallback) para generar la respuesta.
 """
 import re
 import unicodedata
@@ -9,7 +9,7 @@ import uuid
 from datetime import date
 from typing import Optional
 
-from groq import Groq
+import httpx
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
@@ -122,59 +122,6 @@ def _excepciones_vigentes(db: Session) -> str | None:
             linea += f" — Nueva aula: {ex.aula_nueva}"
         if ex.horario_nuevo:
             linea += f" — Nuevo horario: {ex.horario_nuevo}"
-        lineas.append(linea)
-    return "\n".join(lineas)
-    """
-    Busca eventos de calendario cuyo título, tipo o motivo coincida
-    con palabras clave de la pregunta. Retorna contexto formateado o None.
-    """
-    kw = _palabras_clave(pregunta)
-    hoy = date.today()
-
-    # Palabras que disparan búsqueda de eventos
-    PALABRAS_EVENTO = {
-        "paro", "asueto", "feriado", "examen", "examenes", "final", "finales",
-        "parcial", "parciales", "evento", "cultural", "suspension", "suspendido",
-        "cancelado", "clases", "actividad", "calendario", "fecha", "hoy",
-    }
-    if not any(k in PALABRAS_EVENTO for k in kw):
-        return None
-
-    # Buscar eventos vigentes o futuros que coincidan con las palabras
-    eventos = db.query(EventoCalendario).all()
-    encontrados = []
-    for ev in eventos:
-        texto = _norm(f"{ev.titulo} {ev.tipo} {ev.motivo or ''} {ev.origen or ''}")
-        if any(k in texto for k in kw):
-            encontrados.append(ev)
-
-    # También incluir eventos vigentes HOY aunque no coincidan por texto
-    vigentes_hoy = db.query(EventoCalendario).filter(
-        EventoCalendario.fecha_inicio <= hoy,
-        EventoCalendario.fecha_fin >= hoy,
-    ).all()
-    for ev in vigentes_hoy:
-        if ev not in encontrados:
-            encontrados.append(ev)
-
-    if not encontrados:
-        return None
-
-    lineas = ["Eventos de calendario relevantes:"]
-    for ev in encontrados[:10]:
-        vigente = ev.fecha_inicio <= hoy <= ev.fecha_fin
-        estado = "VIGENTE HOY" if vigente else (
-            f"desde {ev.fecha_inicio}" if ev.fecha_inicio > hoy else f"hasta {ev.fecha_fin}"
-        )
-        linea = (
-            f"  - {ev.titulo} [{ev.tipo.value}]"
-            f" | {ev.fecha_inicio}"
-            + (f" → {ev.fecha_fin}" if ev.fecha_fin != ev.fecha_inicio else "")
-            + (f" | {ev.hora_inicio}" if ev.hora_inicio else "")
-            + f" | {estado}"
-            + (f" | {ev.motivo}" if ev.motivo else "")
-            + f" | Cargado por: {ev.origen or 'sistema'}"
-        )
         lineas.append(linea)
     return "\n".join(lineas)
 
@@ -458,15 +405,35 @@ Usuario: {usuario.nombre} (rol: {usuario.rol.value})"""
     if len(historial) > 20:
         historial = historial[-20:]
 
-    client = Groq(api_key=settings.GROQ_API_KEY)
-    response = client.chat.completions.create(
-        model=settings.GROQ_MODEL,
-        messages=[{"role": "system", "content": system_prompt}] + historial,
-        temperature=0.3,
-        max_tokens=2048,
-    )
+    payload = {
+        "model": settings.AI_MODEL,
+        "messages": [{"role": "system", "content": system_prompt}] + historial,
+        "temperature": 0.3,
+        "max_tokens": 2048,
+    }
 
-    respuesta = response.choices[0].message.content.strip()
+    if settings.OPENROUTER_API_KEY:
+        api_url = "https://openrouter.ai/api/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
+            "HTTP-Referer": settings.SITE_URL,
+            "X-Title": settings.SITE_NAME,
+            "Content-Type": "application/json",
+        }
+    else:
+        # Fallback a Groq (API compatible con OpenAI)
+        api_url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {settings.GROQ_API_KEY}",
+            "Content-Type": "application/json",
+        }
+
+    with httpx.Client(timeout=60) as client:
+        resp = client.post(api_url, json=payload, headers=headers)
+        resp.raise_for_status()
+        data = resp.json()
+
+    respuesta = data["choices"][0]["message"]["content"].strip()
     historial.append({"role": "assistant", "content": respuesta})
     _historial[conv_id] = historial
 
