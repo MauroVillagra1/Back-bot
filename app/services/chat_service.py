@@ -27,13 +27,20 @@ _historial: dict[str, list[dict]] = {}
 # Palabras vacías que no aportan a la búsqueda
 _STOPWORDS = {
     "que", "cual", "cuales", "como", "donde", "cuando", "quien", "quienes",
-    "tiene", "tiene", "tengo", "tenes", "tiene", "tienen", "hay", "esta",
-    "estan", "para", "por", "con", "del", "las", "los", "una", "uno", "unos",
-    "unas", "este", "esta", "esto", "ese", "esa", "eso", "dame", "dime",
+    "tiene", "tengo", "tenes", "tienen", "hay", "esta", "estan",
+    "para", "por", "con", "del", "las", "los", "una", "uno", "unos",
+    "unas", "este", "esto", "ese", "esa", "eso", "dame", "dime",
     "decime", "mostrame", "buscame", "sobre", "info", "informacion",
-    "horario", "horarios", "materia", "materias", "comision", "comisiones",
-    "profesor", "profesora", "profesores", "aula", "aulas", "clase", "clases",
+    "aula", "aulas", "clase", "clases",
 }
+
+# Palabras que indican "quiero ver todos los profesores"
+_PALABRAS_LISTA_PROFS = {"profesores", "profesoras", "docentes", "docente"}
+# Palabras que indican "quiero ver todas las materias"
+_PALABRAS_LISTA_MATERIAS = {"materias", "asignaturas"}
+# Palabras que indican búsqueda de comisión por nombre parcial
+_PALABRAS_COMISION = {"comision", "comisiones", "horario", "horarios", "materia", "materias",
+                      "profesor", "profesora", "profesores"}
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -236,17 +243,31 @@ def _buscar_en_db(pregunta: str, db: Session) -> str:
     pregunta_upper = pregunta.upper()
     secciones = []
 
-    # ── 1. Comisión exacta tipo 1K01 ──────────────────────────────────────────
+    # ── 1. Comisión — exacta tipo 1K01 o búsqueda parcial (ej: "am1", "AM1") ──
+    comision_encontrada = None
+
+    # Intento 1: patrón exacto NKxx (ej: 1K01, 3K03)
     match_com = re.search(r"\b([1-4]K\d{2})\b", pregunta_upper)
     if match_com:
-        nombre_com = match_com.group(1)
-        comision = db.query(Comision).filter(Comision.nombre == nombre_com).first()
-        if comision:
-            lineas = [f"Comisión {comision.nombre}:"]
-            cursadas = db.query(Cursada).filter(Cursada.comision_id == comision.id).all()
-            for c in cursadas:
-                lineas.append("  - " + _formato_cursada(c, db, mostrar_comision=False))
-            secciones.append("\n".join(lineas))
+        comision_encontrada = db.query(Comision).filter(
+            Comision.nombre == match_com.group(1)
+        ).first()
+
+    # Intento 2: buscar por nombre parcial con ilike (ej: "am1" → "AM1")
+    if not comision_encontrada and kw:
+        todas_comisiones = db.query(Comision).all()
+        for com in todas_comisiones:
+            nombre_n = _norm(com.nombre)
+            if any(k in nombre_n for k in kw):
+                comision_encontrada = com
+                break
+
+    if comision_encontrada:
+        lineas = [f"Comisión {comision_encontrada.nombre}:"]
+        cursadas = db.query(Cursada).filter(Cursada.comision_id == comision_encontrada.id).all()
+        for c in cursadas:
+            lineas.append("  - " + _formato_cursada(c, db, mostrar_comision=False))
+        secciones.append("\n".join(lineas))
 
     # ── 2. Materias ───────────────────────────────────────────────────────────
     if kw:
@@ -266,15 +287,23 @@ def _buscar_en_db(pregunta: str, db: Session) -> str:
             secciones.append("\n".join(lineas))
 
     # ── 3. Profesores ─────────────────────────────────────────────────────────
-    if kw:
-        profs = db.query(Usuario).filter(Usuario.rol == RolEnum.profesor_directivo).all()
-        encontrados = []
-        for p in profs:
-            nombre_n = _norm(p.nombre)
-            if any(k in nombre_n for k in kw):
-                encontrados.append(p)
+    palabras_orig = set(re.findall(r"[a-záéíóúüñ]+", _norm(pregunta)))
+    pide_lista_profs = bool(palabras_orig & _PALABRAS_LISTA_PROFS)
 
-        for prof in encontrados[:3]:
+    if pide_lista_profs or kw:
+        profs = db.query(Usuario).filter(Usuario.rol == RolEnum.profesor_directivo).all()
+
+        if pide_lista_profs and not kw:
+            # Listado general de profesores (sin filtrar por nombre)
+            encontrados = profs[:30]
+        else:
+            encontrados = []
+            for p in profs:
+                nombre_n = _norm(p.nombre)
+                if any(k in nombre_n for k in kw):
+                    encontrados.append(p)
+
+        for prof in encontrados[:5]:
             lineas = [f"Profesor: {prof.nombre}"]
             asigs = db.query(CursadaProfesor).filter(CursadaProfesor.profesor_id == prof.id).all()
             if asigs:
