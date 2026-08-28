@@ -405,6 +405,10 @@ Usuario: {usuario.nombre} (rol: {usuario.rol.value})"""
     if len(historial) > 20:
         historial = historial[-20:]
 
+    api_key = settings.OPENROUTER_API_KEY.strip()
+    if not api_key:
+        raise ValueError("OPENROUTER_API_KEY no está configurada en las variables de entorno")
+
     payload = {
         "model": settings.AI_MODEL,
         "messages": [{"role": "system", "content": system_prompt}] + historial,
@@ -413,7 +417,7 @@ Usuario: {usuario.nombre} (rol: {usuario.rol.value})"""
     }
 
     headers = {
-        "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "HTTP-Referer": settings.SITE_URL,
         "X-Title": settings.SITE_NAME,
         "Content-Type": "application/json",
