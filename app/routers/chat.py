@@ -1,6 +1,6 @@
 """
 Router del chatbot con IA.
-Usa Groq (Llama 3) con contexto de la DB filtrado por rol del usuario.
+Usa OpenRouter con contexto de la DB filtrado por rol del usuario.
 """
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel
@@ -41,7 +41,7 @@ def chat(
 ):
     """
     Endpoint principal del asistente.
-    Construye el contexto según el rol del usuario y consulta a Groq/Llama 3.
+    Construye el contexto según el rol del usuario y consulta a OpenRouter.
     """
     if not request_data.mensaje.strip():
         raise HTTPException(
@@ -64,7 +64,7 @@ def chat(
         if "api_key" in error_msg.lower() or "authentication" in error_msg.lower():
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail="El servicio de IA no está configurado. Agregá GROQ_API_KEY al .env",
+                detail="El servicio de IA no está configurado. Agregá OPENROUTER_API_KEY al .env",
             )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
