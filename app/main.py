@@ -72,7 +72,7 @@ def health_check():
 # ── Handler global de errores no capturados ───────────────────────────────────
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
-    # Agregar headers CORS manualmente porque el middleware no los agrega en errores 500
+    import traceback
     origin = request.headers.get("origin", "")
     headers = {}
     if origin in settings.CORS_ORIGINS:
@@ -81,6 +81,6 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": "Error interno del servidor"},
+        content={"detail": str(exc), "type": type(exc).__name__, "trace": traceback.format_exc()},
         headers=headers,
     )
