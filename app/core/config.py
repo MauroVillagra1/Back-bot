@@ -25,13 +25,9 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
 
     # ── IA ────────────────────────────────────────────────────────────────────
-    # OpenRouter (preferido) o Groq como fallback
+    # OpenRouter — https://openrouter.ai
     OPENROUTER_API_KEY: str = ""
-    GROQ_API_KEY: str = ""
-    # Modelo a usar — para OpenRouter: "openai/gpt-4o", "anthropic/claude-3.5-sonnet", etc.
-    # Para Groq: "llama-3.3-70b-versatile"
-    AI_MODEL: str = "openai/gpt-4o"
-    # URL de tu sitio (requerido por OpenRouter para rankings)
+    AI_MODEL: str = "nvidia/nemotron-3-ultra-550b-a55b:free"
     SITE_URL: str = "https://utnia.netlify.app"
     SITE_NAME: str = "Asistente UTN"
 

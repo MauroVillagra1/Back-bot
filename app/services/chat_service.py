@@ -412,24 +412,19 @@ Usuario: {usuario.nombre} (rol: {usuario.rol.value})"""
         "max_tokens": 2048,
     }
 
-    if settings.OPENROUTER_API_KEY:
-        api_url = "https://openrouter.ai/api/v1/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
-            "HTTP-Referer": settings.SITE_URL,
-            "X-Title": settings.SITE_NAME,
-            "Content-Type": "application/json",
-        }
-    else:
-        # Fallback a Groq (API compatible con OpenAI)
-        api_url = "https://api.groq.com/openai/v1/chat/completions"
-        headers = {
-            "Authorization": f"Bearer {settings.GROQ_API_KEY}",
-            "Content-Type": "application/json",
-        }
+    headers = {
+        "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
+        "HTTP-Referer": settings.SITE_URL,
+        "X-Title": settings.SITE_NAME,
+        "Content-Type": "application/json",
+    }
 
     with httpx.Client(timeout=60) as client:
-        resp = client.post(api_url, json=payload, headers=headers)
+        resp = client.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            json=payload,
+            headers=headers,
+        )
         resp.raise_for_status()
         data = resp.json()
 
