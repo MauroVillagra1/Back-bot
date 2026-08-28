@@ -409,12 +409,12 @@ Usuario: {usuario.nombre} (rol: {usuario.rol.value})"""
     if not api_key:
         raise ValueError("OPENROUTER_API_KEY no está configurada en las variables de entorno")
 
-    payload = {
-        "model": settings.AI_MODEL,
-        "messages": [{"role": "system", "content": system_prompt}] + historial,
-        "temperature": 0.3,
-        "max_tokens": 2048,
-    }
+    # Modelos en orden de preferencia — si uno falla se intenta el siguiente
+    modelos = list(dict.fromkeys([
+        settings.AI_MODEL,
+        "meta-llama/llama-3.3-70b-instruct:free",
+        "google/gemini-2.0-flash-exp:free",
+    ]))
 
     headers = {
         "Authorization": f"Bearer {api_key}",
@@ -423,16 +423,36 @@ Usuario: {usuario.nombre} (rol: {usuario.rol.value})"""
         "Content-Type": "application/json",
     }
 
-    with httpx.Client(timeout=60) as client:
-        resp = client.post(
-            "https://openrouter.ai/api/v1/chat/completions",
-            json=payload,
-            headers=headers,
-        )
-        resp.raise_for_status()
-        data = resp.json()
+    respuesta = None
+    ultimo_error = None
 
-    respuesta = data["choices"][0]["message"]["content"].strip()
+    for modelo in modelos:
+        try:
+            payload = {
+                "model": modelo,
+                "messages": [{"role": "system", "content": system_prompt}] + historial,
+                "temperature": 0.3,
+                "max_tokens": 2048,
+            }
+            with httpx.Client(timeout=60) as client:
+                resp = client.post(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    json=payload,
+                    headers=headers,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                if "choices" not in data or not data["choices"]:
+                    raise ValueError(f"Sin respuesta del modelo {modelo}")
+                respuesta = data["choices"][0]["message"]["content"].strip()
+                break  # éxito
+        except Exception as e:
+            ultimo_error = e
+            continue  # intentar con el siguiente
+
+    if respuesta is None:
+        raise ValueError(f"Todos los modelos fallaron. Último error: {ultimo_error}")
+
     historial.append({"role": "assistant", "content": respuesta})
     _historial[conv_id] = historial
 
