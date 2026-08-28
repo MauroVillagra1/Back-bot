@@ -463,7 +463,7 @@ Usuario: {usuario.nombre} (rol: {usuario.rol.value})"""
         model=settings.GROQ_MODEL,
         messages=[{"role": "system", "content": system_prompt}] + historial,
         temperature=0.3,
-        max_tokens=1024,
+        max_tokens=2048,
     )
 
     respuesta = response.choices[0].message.content.strip()
