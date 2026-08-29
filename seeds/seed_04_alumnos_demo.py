@@ -34,7 +34,7 @@ def seed(db) -> None:
             defaults={
                 "nombre":        nombre,
                 "password_hash": HASH_DEFAULT,
-                "rol":           RolEnum.alumno,
+                "rol":           RolEnum.estudiante,
                 "activo":        True,
             },
             email=email,

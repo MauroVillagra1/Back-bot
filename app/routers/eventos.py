@@ -92,7 +92,7 @@ def modificar_evento(
     if not obj:
         raise HTTPException(status_code=404, detail="Evento no encontrado")
 
-    if current_user.rol != "administrador" and obj.cargado_por != current_user.id:
+    if current_user.rol.value not in ("root", "master", "administrador") and obj.cargado_por != current_user.id:
         raise HTTPException(status_code=403, detail="Solo podés modificar eventos que vos creaste")
 
     obj.titulo       = data.titulo
@@ -117,7 +117,7 @@ def eliminar_evento(
     obj = db.get(EventoCalendario, evento_id)
     if not obj:
         raise HTTPException(status_code=404, detail="Evento no encontrado")
-    if current_user.rol != "administrador" and obj.cargado_por != current_user.id:
+    if current_user.rol.value not in ("root", "master", "administrador") and obj.cargado_por != current_user.id:
         raise HTTPException(status_code=403, detail="Solo podés eliminar eventos que vos creaste")
     db.delete(obj)
     db.commit()
@@ -132,8 +132,9 @@ def listar_eventos(
 ):
     query = db.query(EventoCalendario)
 
-    # Alumnos y profesores: solo eventos generales
-    if current_user.rol in ("alumno", "profesor", "profesor_directivo"):
+    # Estudiantes y docentes: solo eventos generales
+    _roles_solo_general = {"alumno", "estudiante", "profesor", "profesor_directivo", "docente"}
+    if current_user.rol.value in _roles_solo_general:
         query = query.filter(EventoCalendario.alcance == AlcanceEventoEnum.general)
 
     if fecha_desde:

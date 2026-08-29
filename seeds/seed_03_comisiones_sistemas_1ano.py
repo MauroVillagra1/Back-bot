@@ -196,7 +196,11 @@ def seed(db) -> None:
     profesores_existentes = list(
         db.query(
             __import__("app.models.usuario", fromlist=["Usuario"]).Usuario
-        ).filter_by(rol=RolEnum.profesor_directivo).all()
+        ).filter(
+            __import__("app.models.usuario", fromlist=["Usuario"]).Usuario.rol.in_(
+                ["docente", "profesor", "profesor_directivo"]
+            )
+        ).all()
     )
 
     # ── Iterar comisiones ─────────────────────────────────────────────────────
@@ -238,7 +242,7 @@ def seed(db) -> None:
             # Asignar docentes
             for nombre_doc in docentes:
                 prof = crear_profesor(
-                    db, nombre_doc, profesores_existentes, RolEnum.profesor_directivo
+                    db, nombre_doc, profesores_existentes, RolEnum.docente
                 )
                 get_or_create(
                     db, CursadaProfesor,

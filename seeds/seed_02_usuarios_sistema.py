@@ -22,67 +22,63 @@ from app.models.usuario import RolEnum, Usuario
 from seeds.seed_utils import DEPARTAMENTOS, HASH_DEFAULT, get_or_create, log, normalizar_nombre
 
 
-def _rol(nombre: str) -> RolEnum:
-    """Devuelve RolEnum.<nombre> o lanza RuntimeError con mensaje claro."""
-    try:
-        return getattr(RolEnum, nombre)
-    except AttributeError:
-        miembros = [m.value for m in RolEnum]
-        raise RuntimeError(
-            f"RolEnum no tiene el miembro '{nombre}'. "
-            f"Miembros disponibles: {miembros}. "
-            f"Extendé el enum en app/models/usuario.py antes de correr esta seed."
-        )
-
-
 def seed(db) -> None:
-    # ── Administrador general ─────────────────────────────────────────────────
-    print("\n── Administrador ────────────────────────────────────────────────────")
+    print("\n── Administrador / Root ─────────────────────────────────────────────")
     u, created = get_or_create(
         db, Usuario,
         defaults={
-            "nombre":        "Administrador Sistema",
+            "nombre":        "Mauro",
+            "apellido":      "Villagra",
             "password_hash": HASH_DEFAULT,
-            "rol":           _rol("administrador"),
+            "rol":           RolEnum.root,
             "activo":        True,
         },
-        email="admin@admin.frt.utn.edu.ar",
+        email="root@root.frt.utn.edu.ar",
     )
-    log(created, f"admin@admin.frt.utn.edu.ar  [{u.rol.value}]")
+    log(created, f"root@root.frt.utn.edu.ar  [root]")
 
-    # ── Administrativo ────────────────────────────────────────────────────────
-    # Para adicionales usar: admin1@admin.frt.utn.edu.ar, admin2@...
+    print("\n── Master ───────────────────────────────────────────────────────────")
+    u, created = get_or_create(
+        db, Usuario,
+        defaults={
+            "nombre":        "Mauro",
+            "apellido":      "Villagra",
+            "password_hash": HASH_DEFAULT,
+            "rol":           RolEnum.master,
+            "activo":        True,
+        },
+        email="master@master.frt.utn.edu.ar",
+    )
+    log(created, f"master@master.frt.utn.edu.ar  [master]")
+
     print("\n── Administrativo ───────────────────────────────────────────────────")
     u, created = get_or_create(
         db, Usuario,
         defaults={
-            "nombre":        "Personal Administrativo",
+            "nombre":        "Mauro",
+            "apellido":      "Villagra",
             "password_hash": HASH_DEFAULT,
-            "rol":           _rol("administrativo"),
+            "rol":           RolEnum.administrativo,
             "activo":        True,
         },
-        email="administrativo@admin.frt.utn.edu.ar",
+        email="admin@admin.frt.utn.edu.ar",
     )
-    log(created, f"administrativo@admin.frt.utn.edu.ar  [{u.rol.value}]")
+    log(created, f"admin@admin.frt.utn.edu.ar  [administrativo]")
 
-    # ── Jefes de Departamento ─────────────────────────────────────────────────
-    # H = Básicas es transversal, no tiene jefe propio.
-    print("\n── Jefes de Departamento ────────────────────────────────────────────")
+    print("\n── Jefes de Área ────────────────────────────────────────────────────")
     for letra, carrera in DEPARTAMENTOS.items():
         if letra == "H":
             print(f"  · omitido: Básicas (transversal, sin jefe propio)")
             continue
-
-        carrera_norm = normalizar_nombre(carrera)   # ej: "sistemas", "mecanica"
-        email        = f"jefe{carrera_norm}@depto.frt.utn.edu.ar"
-        nombre       = f"Jefe Departamento {carrera}"
-
+        carrera_norm = normalizar_nombre(carrera)
+        email = f"jefe{carrera_norm}@depto.frt.utn.edu.ar"
         u, created = get_or_create(
             db, Usuario,
             defaults={
-                "nombre":        nombre,
+                "nombre":        "Mauro",
+                "apellido":      "Villagra",
                 "password_hash": HASH_DEFAULT,
-                "rol":           _rol("jefe_departamento"),
+                "rol":           RolEnum.jefe_area,
                 "activo":        True,
             },
             email=email,
@@ -91,7 +87,11 @@ def seed(db) -> None:
 
     db.commit()
     print("\n✅ seed_02 completada.")
-    print("   Contraseña de todas las cuentas: 123456")
+    print("   Cuentas creadas:")
+    print("   root@root.frt.utn.edu.ar         / 123456  [root]")
+    print("   master@master.frt.utn.edu.ar     / 123456  [master]")
+    print("   admin@admin.frt.utn.edu.ar       / 123456  [administrativo]")
+    print("   jefesistemas@depto.frt.utn.edu.ar / 123456  [jefe_area]")
 
 
 if __name__ == "__main__":
