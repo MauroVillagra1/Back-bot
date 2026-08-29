@@ -1,11 +1,6 @@
 """
-Router InfoCursada — docente carga/actualiza la info de su cursada:
+Router InfoCursada — el profesor carga/actualiza la info de su cursada:
 condiciones de aprobación, parciales, TFI, modalidad, etc.
-
-Permisos:
-  - PUT (crear/actualizar): docente asignado a esa cursada, o master/root
-  - GET: cualquier usuario autenticado
-  - DELETE: quien lo cargó, o master/root
 """
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -13,14 +8,12 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
-from app.core.dependencies import get_current_user, require_docente
+from app.core.dependencies import get_current_user, require_profesor
 from app.models.cursada import CursadaProfesor
 from app.models.info_cursada import InfoCursada
-from app.models.usuario import Usuario
+from app.models.usuario import RolEnum, Usuario
 
 router = APIRouter(prefix="/info-cursada", tags=["Info del cursado"])
-
-_ROLES_FULL_ACCESS = {"root", "master", "administrador"}
 
 
 class InfoCursadaPayload(BaseModel):
@@ -39,12 +32,9 @@ class InfoCursadaRead(InfoCursadaPayload):
     model_config = {"from_attributes": True}
 
 
-def _verificar_acceso_docente(cursada_id: int, usuario: Usuario, db: Session) -> None:
-    """Verifica que el docente esté asignado a la cursada. Master/root bypasean."""
-    if usuario.rol.value in _ROLES_FULL_ACCESS:
+def _verificar_acceso(cursada_id: int, usuario: Usuario, db: Session) -> None:
+    if usuario.rol == RolEnum.administrador:
         return
-    if usuario.es_jefe:
-        return  # jefe_area puede ver info de su área
     asignado = db.query(CursadaProfesor).filter(
         CursadaProfesor.cursada_id == cursada_id,
         CursadaProfesor.profesor_id == usuario.id,
@@ -52,7 +42,7 @@ def _verificar_acceso_docente(cursada_id: int, usuario: Usuario, db: Session) ->
     if not asignado:
         raise HTTPException(
             status_code=403,
-            detail="Solo podés cargar info en cursadas donde estás asignado como docente",
+            detail="Solo podés cargar info en cursadas donde estás asignado como profesor",
         )
 
 
@@ -61,16 +51,17 @@ def guardar_info(
     cursada_id: int,
     data: InfoCursadaPayload,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(require_docente),
+    current_user: Usuario = Depends(require_profesor),
 ):
-    """Crea o actualiza la info del cursado (upsert). Solo el docente asignado o master/root."""
+    """Crea o actualiza la info del cursado (upsert). Solo el profesor asignado o admin."""
     if data.cursada_id != cursada_id:
         raise HTTPException(status_code=422, detail="cursada_id no coincide")
 
-    _verificar_acceso_docente(cursada_id, current_user, db)
+    _verificar_acceso(cursada_id, current_user, db)
 
     obj = db.query(InfoCursada).filter(InfoCursada.cursada_id == cursada_id).first()
     if obj:
+        # Actualizar
         for field, value in data.model_dump(exclude={"cursada_id"}).items():
             setattr(obj, field, value)
         obj.cargado_por = current_user.id
@@ -96,24 +87,3 @@ def obtener_info(
 ):
     """Devuelve la info del cursado. Visible para cualquier usuario autenticado."""
     return db.query(InfoCursada).filter(InfoCursada.cursada_id == cursada_id).first()
-
-
-@router.delete("/{cursada_id}", status_code=204)
-def eliminar_info(
-    cursada_id: int,
-    db: Session = Depends(get_db),
-    current_user: Usuario = Depends(require_docente),
-):
-    """Elimina la info del cursado. Solo quien la cargó o master/root."""
-    obj = db.query(InfoCursada).filter(InfoCursada.cursada_id == cursada_id).first()
-    if not obj:
-        raise HTTPException(status_code=404, detail="Info no encontrada")
-
-    es_autor = obj.cargado_por == current_user.id
-    es_privilegiado = current_user.rol.value in _ROLES_FULL_ACCESS
-
-    if not es_autor and not es_privilegiado:
-        raise HTTPException(status_code=403, detail="Solo podés eliminar info que vos cargaste")
-
-    db.delete(obj)
-    db.commit()

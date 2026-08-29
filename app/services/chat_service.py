@@ -238,7 +238,7 @@ def _buscar_en_db(pregunta: str, db: Session) -> str:
     pide_lista_profs = bool(palabras_orig & _PALABRAS_LISTA_PROFS)
 
     if pide_lista_profs or kw:
-        profs = db.query(Usuario).filter(Usuario.rol.in_(["docente", "profesor", "profesor_directivo"])).all()
+        profs = db.query(Usuario).filter(Usuario.rol == RolEnum.profesor_directivo).all()
 
         if pide_lista_profs and not kw:
             # Listado general de profesores (sin filtrar por nombre)
@@ -268,7 +268,7 @@ def _buscar_en_db(pregunta: str, db: Session) -> str:
 
     # ── 4. Alumnos ────────────────────────────────────────────────────────────
     if kw:
-        alumnos = db.query(Usuario).filter(Usuario.rol.in_(["alumno", "estudiante"])).all()
+        alumnos = db.query(Usuario).filter(Usuario.rol == RolEnum.alumno).all()
         encontrados = []
         for a in alumnos:
             nombre_n = _norm(a.nombre)
@@ -286,8 +286,8 @@ def _buscar_en_db(pregunta: str, db: Session) -> str:
 
     # ── 5. Nada encontrado: resumen numérico ──────────────────────────────────
     if not secciones:
-        total_alumnos = db.query(Usuario).filter(Usuario.rol.in_(["alumno", "estudiante"])).count()
-        total_prof = db.query(Usuario).filter(Usuario.rol.in_(["docente", "profesor", "profesor_directivo"])).count()
+        total_alumnos = db.query(Usuario).filter(Usuario.rol == RolEnum.alumno).count()
+        total_prof = db.query(Usuario).filter(Usuario.rol == RolEnum.profesor_directivo).count()
         total_materias = db.query(Materia).count()
         total_cursadas = db.query(Cursada).count()
         periodos = db.query(PeriodoAcademico).all()
@@ -368,18 +368,18 @@ def responder_consulta(
     conv_id = conversacion_id or str(uuid.uuid4())
 
     # Contexto según rol
-    if usuario.es_estudiante:
+    if usuario.rol == RolEnum.alumno:
         contexto = _contexto_alumno(usuario, db)
         ctx_ev = _buscar_eventos(pregunta, db)
         if ctx_ev:
             contexto += "\n\n" + ctx_ev
-    elif usuario.es_docente:
+    elif usuario.es_profesor:
         contexto = _contexto_profesor(usuario, db)
         ctx_ev = _buscar_eventos(pregunta, db)
         if ctx_ev:
             contexto += "\n\n" + ctx_ev
     else:
-        # master/root/administrativo/jefe_area: búsqueda universal
+        # Admin/administrativo/jefe: búsqueda universal (ya incluye eventos dentro)
         contexto = _buscar_en_db(pregunta, db)
 
     # Excepciones vigentes (hoy en adelante) — siempre presentes en todos los roles
