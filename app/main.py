@@ -72,14 +72,16 @@ def health_check():
 # ── Handler global de errores no capturados ───────────────────────────────────
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
+    import traceback
     origin = request.headers.get("origin", "")
     headers = {}
     if origin in settings.CORS_ORIGINS:
         headers["Access-Control-Allow-Origin"] = origin
         headers["Access-Control-Allow-Credentials"] = "true"
 
+    # Debug temporal — mostrar error real para diagnosticar
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"detail": "Error interno del servidor"},
+        content={"detail": str(exc), "trace": traceback.format_exc()[-2000:]},
         headers=headers,
     )
