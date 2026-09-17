@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     # ── IA ────────────────────────────────────────────────────────────────────
     # OpenRouter — https://openrouter.ai
     OPENROUTER_API_KEY: str = ""
-    AI_MODEL: str = "nvidia/nemotron-3-ultra-550b-a55b:free"
+    AI_MODEL: str = "nex-agi/nex-n2.5-pro:free"
     SITE_URL: str = "https://utnia.netlify.app"
     SITE_NAME: str = "Asistente UTN"
 

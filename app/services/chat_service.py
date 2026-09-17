@@ -410,10 +410,11 @@ Usuario: {usuario.nombre} (rol: {usuario.rol.value})"""
         raise ValueError("OPENROUTER_API_KEY no está configurada en las variables de entorno")
 
     # Modelos en orden de preferencia — si uno falla se intenta el siguiente
+    # Lista verificada: estos modelos responden correctamente en OpenRouter
     modelos = list(dict.fromkeys([
         settings.AI_MODEL,
-        "meta-llama/llama-3.3-70b-instruct:free",
-        "google/gemini-2.0-flash-exp:free",
+        "nex-agi/nex-n2.5-pro:free",
+        "nex-agi/nex-n2.5-mini:free",
     ]))
 
     headers = {
