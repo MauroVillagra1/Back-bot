@@ -14,6 +14,8 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
+        # Variables viejas en un .env (ej. RATE_LIMIT_CHAT) no deben romper el arranque
+        extra="ignore",
     )
 
     # ── Base de datos ──────────────────────────────────────────────────────────
@@ -27,12 +29,23 @@ class Settings(BaseSettings):
     # ── IA ────────────────────────────────────────────────────────────────────
     # OpenRouter — https://openrouter.ai
     OPENROUTER_API_KEY: str = ""
-    AI_MODEL: str = "nex-agi/nex-n2.5-pro:free"
+    AI_MODEL: str = "qwen/qwen3.8-27b:free"
     SITE_URL: str = "https://utnia.netlify.app"
     SITE_NAME: str = "Asistente UTN"
 
+    # Modelos alternativos si AI_MODEL falla (en orden)
+    # Siempre se prueban después de AI_MODEL: si AI_MODEL deja de existir, el chat sigue andando
+    AI_MODELOS_RESPALDO: List[str] = ["qwen/qwen3.8-27b:free", "google/gemma-4-26b-a4b-it:free"]
+
+    # Horas que una respuesta del chat queda en caché (se invalida sola si cambian los datos)
+    CACHE_TTL_HORAS: int = 6
+
+    # Clasificación con LLM solo cuando ninguna regla coincide; tope por corrida (0 = nunca)
+    CLASIFICACION_LLM_MAX_POR_CORRIDA: int = 0
+
     # ── Rate limiting ─────────────────────────────────────────────────────────
-    RATE_LIMIT_CHAT: str = "20/minute"
+    # Mensajes por usuario por minuto (se cuenta en Postgres: funciona en serverless)
+    CHAT_MAX_POR_MINUTO: int = 10
 
     # ── Entorno ───────────────────────────────────────────────────────────────
     ENVIRONMENT: str = "development"
@@ -40,7 +53,11 @@ class Settings(BaseSettings):
     # ── CORS ──────────────────────────────────────────────────────────────────
     CORS_ORIGINS: List[str] = ["http://localhost:5173", "http://localhost:3000"]
 
-    @field_validator("CORS_ORIGINS", mode="before")
+    # ── Usuarios ──────────────────────────────────────────────────────────────
+    # Solo se pueden crear cuentas (y loguearse) con estos dominios de correo
+    DOMINIOS_PERMITIDOS: List[str] = ["alu.frt.utn.edu.ar"]
+
+    @field_validator("CORS_ORIGINS", "DOMINIOS_PERMITIDOS", mode="before")
     @classmethod
     def parse_cors_origins(cls, v):
         """Acepta lista JSON ["url1","url2"] o string separado por comas desde el .env."""

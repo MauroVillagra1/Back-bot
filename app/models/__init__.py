@@ -3,31 +3,26 @@ Importa todos los modelos para que Alembic los detecte al generar migraciones.
 Si agregás un modelo nuevo, importalo acá.
 """
 from app.models.usuario import Usuario
-from app.models.academico import (
-    Materia,
-    PeriodoAcademico,
-    Comision,
-    UsuarioComision,
-)
-from app.models.cursada import (
-    Cursada,
-    CursadaProfesor,
-    CursadaExcepcion,
-)
-from app.models.eventos import EventoCalendario
-from app.models.material import MaterialApoyo
 from app.models.auditoria import RegistroCambios
+from app.models.chat import MensajeChat
+from app.models.ingesta import Chunk, Documento, Fuente, Ingesta, Publicacion
+from app.models.metrica import MetricaDiaria
+from app.models.informacion import Evidencia, Historial, Informacion, Verificacion
+from app.models.cache import CacheRespuesta
 
 __all__ = [
     "Usuario",
-    "Materia",
-    "PeriodoAcademico",
-    "Comision",
-    "UsuarioComision",
-    "Cursada",
-    "CursadaProfesor",
-    "CursadaExcepcion",
-    "EventoCalendario",
-    "MaterialApoyo",
     "RegistroCambios",
+    "MensajeChat",
+    "Fuente",
+    "Documento",
+    "Publicacion",
+    "Chunk",
+    "Ingesta",
+    "MetricaDiaria",
+    "Informacion",
+    "Evidencia",
+    "Verificacion",
+    "Historial",
+    "CacheRespuesta",
 ]
