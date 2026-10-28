@@ -65,11 +65,14 @@ def require_rol(*roles: str):
 
 # ── Dependencias pre-construidas ──────────────────────────────────────────────
 
-# MIEMBRO: cualquier usuario autenticado y activo
-require_miembro = get_current_user
+# USUARIO: cualquier usuario autenticado y activo
+require_usuario = get_current_user
 
-# MOD: revisión de información, contradicciones, fuentes y estados
-require_mod = require_rol("MOD", "ADMIN")
+# MOD: carga información (formulario "Cargar información")
+require_mod = require_rol("MOD", "SMOD", "ADMIN")
 
-# ADMIN: fuentes, configuración, usuarios y administración del sistema
+# SMOD: panel limitado — paros, documentos, horarios, mesas, calendario, sugerencias y dar MOD
+require_smod = require_rol("SMOD", "ADMIN")
+
+# ADMIN: resumen, reportes, rangos, suspensiones, historial de cambios e importación de archivos
 require_admin = require_rol("ADMIN")

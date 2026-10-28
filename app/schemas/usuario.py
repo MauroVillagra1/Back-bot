@@ -53,7 +53,7 @@ class UsuarioBase(BaseModel):
 class UsuarioCreate(UsuarioBase):
     """Datos para crear un usuario por consola (create_admin.py). Desde la app solo hay registro público."""
     email: EmailInstitucional
-    rol: RolEnum = RolEnum.MIEMBRO
+    rol: RolEnum = RolEnum.USUARIO
     password: Password
 
 
@@ -70,8 +70,8 @@ class UsuarioRead(UsuarioBase):
 
 
 class CambioRol(BaseModel):
-    """Desde la app un ADMIN solo da o quita el rango de moderador."""
-    rol: Literal[RolEnum.MIEMBRO, RolEnum.MOD]
+    """Desde la app nadie da el rango ADMIN (solo por consola: create_admin.py)."""
+    rol: Literal[RolEnum.USUARIO, RolEnum.MOD, RolEnum.SMOD]
 
 
 class Suspension(BaseModel):

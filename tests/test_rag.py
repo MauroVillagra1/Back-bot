@@ -29,7 +29,7 @@ def _r(n, estado="CONFIRMADA", dia=20):
 def rag(db, monkeypatch):
     engine = db.get_bind()
     for m in (MensajeChat, CacheRespuesta, MetricaDiaria, Informacion, Chunk):
-        m.__table__.create(engine)
+        m.__table__.create(engine, checkfirst=True)
     llamadas = {"llm": [], "busquedas": []}
     estado = {"resultados": [_r(1), _r(2, "PROBABLE", dia=25)], "texto": "Hasta el 28/11 [1]."}
 
@@ -58,7 +58,7 @@ def _preguntar(client, usuario, texto, conv=None):
 
 
 def test_respuesta_con_estado_fuentes_y_fecha_de_la_base(client, crear_usuario, rag):
-    u = crear_usuario("u@alu.frt.utn.edu.ar", RolEnum.MIEMBRO)
+    u = crear_usuario("u@alu.frt.utn.edu.ar", RolEnum.USUARIO)
     data = _preguntar(client, u, "¿Hasta cuándo me inscribo a mesas?")
 
     assert data["respuesta"] == "Hasta el 28/11 [1]."
